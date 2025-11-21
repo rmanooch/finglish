@@ -36,6 +36,7 @@
         display: flex;
         gap: 10px;
         margin-bottom: 12px;
+        align-items: center;
     }
     button {
         padding: 10px 20px;
@@ -66,8 +67,8 @@
 
 <textarea id="input" placeholder="Type Finglish here... e.g., salam chetori?"></textarea>
 <div class="controls">
-  <button id="convertBtn" onclick="convert()">Convert</button>
-  <button id="copyBtn" class="secondary small" onclick="copyOutput()">Copy Output</button>
+  <button id="convertBtn">Convert</button>
+  <button id="copyBtn" class="secondary small">Copy Output</button>
   <span id="status" aria-live="polite"></span>
 </div>
 
@@ -75,29 +76,152 @@
 <div id="output" aria-label="Farsi output"></div>
 
 <script>
+// Mapping table
 const mapping = {
-    "kh": "خ",
-    "gh": "غ",
-    "sh": "ش",
-    "ch": "چ",
-    "zh": "ژ",
-    "aa": "آ",
+  "kh": "خ",
+  "gh": "غ",
+  "sh": "ش",
+  "ch": "چ",
+  "zh": "ژ",
+  "aa": "آ",
+  "a": "ا",
+  "b": "ب",
+  "p": "پ",
+  "t": "ت",
+  "s": "س",
+  "j": "ج",
+  "h": "ه",
+  "d": "د",
+  "z": "ز",
+  "r": "ر",
+  "f": "ف",
+  "q": "ق",
+  "k": "ک",
+  "g": "گ",
+  "l": "ل",
+  "m": "م",
+  "n": "ن",
+  "v": "و",
+  "o": "و",
+  "u": "و",
+  "y": "ی",
+  "i": "ی"
+};
 
-    "a": "ا",
-    "b": "ب",
-    "p": "پ",
-    "t": "ت",
-    "s": "س",
-    "j": "ج",
-    "h": "ه",
-    "d": "د",
-    "z": "ز",
-    "r": "ر",
-    "f": "ف",
-    "q": "ق",
-    "k": "ک",
-    "g": "گ",
-    "l": "ل",
-    "m": "م",
-    "n": "ن",
-    "
+function convert() {
+  try {
+    const inputEl = document.getElementById('input');
+    const raw = inputEl ? inputEl.value : '';
+    const text = String(raw).toLowerCase();
+
+    let result = '';
+    let i = 0;
+
+    while (i < text.length) {
+      const ch = text[i];
+
+      // preserve whitespace
+      if (ch === ' ' || ch === '' || ch === '	') {
+        result += ch;
+        i++;
+        continue;
+      }
+
+      // try two-letter mapping first
+      if (i + 1 < text.length) {
+        const two = text.substring(i, i + 2);
+        if (Object.prototype.hasOwnProperty.call(mapping, two)) {
+          result += mapping[two];
+          i += 2;
+          continue;
+        }
+      }
+
+      // single-letter mapping or fallback
+      if (Object.prototype.hasOwnProperty.call(mapping, ch)) {
+        result += mapping[ch];
+      } else {
+        result += ch; // keep punctuation, numbers, unknown chars
+      }
+
+      i++;
+    }
+
+    const out = document.getElementById('output');
+    if (out) out.innerText = result;
+
+    const copyBtn = document.getElementById('copyBtn');
+    if (copyBtn) copyBtn.disabled = result.trim().length === 0;
+
+    const status = document.getElementById('status');
+    if (status) status.textContent = '';
+  } catch (err) {
+    // show error in console and status
+    console.error('Conversion error:', err);
+    const status = document.getElementById('status');
+    if (status) status.textContent = 'Conversion error (see console)';
+  }
+}
+
+async function copyOutput() {
+  const outEl = document.getElementById('output');
+  const status = document.getElementById('status');
+  const text = outEl ? (outEl.innerText || outEl.textContent || '') : '';
+
+  if (!text.trim()) {
+    if (status) status.textContent = 'Nothing to copy';
+    return;
+  }
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      if (status) status.textContent = 'Copied!';
+      return;
+    }
+  } catch (err) {
+    console.warn('navigator.clipboard failed:', err);
+  }
+
+  // Fallback for insecure contexts
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (status) status.textContent = ok ? 'Copied (fallback)!' : 'Copy failed';
+  } catch (err) {
+    console.error('Fallback copy failed:', err);
+    if (status) status.textContent = 'Copy not supported in this browser/context';
+  }
+}
+
+// Hook up events after DOM is ready
+(function () {
+  const convertBtn = document.getElementById('convertBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const input = document.getElementById('input');
+
+  if (convertBtn) convertBtn.addEventListener('click', convert);
+  if (copyBtn) copyBtn.addEventListener('click', copyOutput);
+
+  if (input) {
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        convert();
+      }
+    });
+  }
+
+  if (copyBtn) copyBtn.disabled = true;
+})();
+</script>
+
+</body>
+</html>
